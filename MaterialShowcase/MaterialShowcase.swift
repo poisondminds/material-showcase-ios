@@ -21,7 +21,7 @@ public class MaterialShowcase: UIView {
   }
   
   // MARK: Material design guideline constant
-  let BACKGROUND_ALPHA: CGFloat = 0.96
+  let BACKGROUND_PROMPT_ALPHA: CGFloat = 0.96
   let TARGET_HOLDER_RADIUS: CGFloat = 44
   let TEXT_CENTER_OFFSET: CGFloat = 44 + 20
   let INSTRUCTIONS_CENTER_OFFSET: CGFloat = 20
@@ -52,11 +52,13 @@ public class MaterialShowcase: UIView {
   var targetRippleView: UIView!
   var targetCopyView: UIView!
   var instructionView: MaterialShowcaseInstructionView!
-
+    
+  var onTapThrough: (() -> Void)?
   
   // MARK: Public Properties
   
   // Background
+  @objc public var backgroundAlpha: CGFloat = 1.0
   @objc public var backgroundPromptColor: UIColor!
   @objc public var backgroundPromptColorAlpha: CGFloat = 0.0
   @objc public var backgroundViewType: BackgroundTypeStyle = .circle
@@ -125,19 +127,36 @@ extension MaterialShowcase {
   }
   
   /// Sets a UIBarButtonItem as target
-  @objc public func setTargetView(barButtonItem: UIBarButtonItem) {
+  @objc public func setTargetView(button: UIButton, tapThrough: Bool = false) {
+    targetView = button
+    let tintColor = button.titleColor(for: .normal)
+    targetTintColor = tintColor
+    backgroundPromptColor = tintColor
+    if tapThrough {
+      onTapThrough = { button.sendActions(for: .touchUpInside)  }
+    }
+  }
+  
+  /// Sets a UIBarButtonItem as target
+  @objc public func setTargetView(barButtonItem: UIBarButtonItem, tapThrough: Bool = false) {
     if let view = (barButtonItem.value(forKey: "view") as? UIView)?.subviews.first {
       targetView = view
+      if tapThrough {
+        onTapThrough = { _ = barButtonItem.target?.perform(barButtonItem.action, with: nil) }
+      }
     }
   }
   
   /// Sets a UITabBar Item as target
-  @objc public func setTargetView(tabBar: UITabBar, itemIndex: Int) {
+  @objc public func setTargetView(tabBar: UITabBar, itemIndex: Int, tapThrough: Bool = false) {
     let tabBarItems = orderedTabBarItemViews(of: tabBar)
     if itemIndex < tabBarItems.count {
       targetView = tabBarItems[itemIndex]
       targetTintColor = tabBar.tintColor
       backgroundPromptColor = tabBar.tintColor
+      if tapThrough {
+        onTapThrough = { tabBar.selectedItem = tabBar.items?[itemIndex] }
+      }
     } else {
       print ("The tab bar item index is out of range")
     }
@@ -169,12 +188,12 @@ extension MaterialShowcase {
         self.targetHolderView.transform = CGAffineTransform(scaleX: 1, y: 1)
         self.backgroundView.transform = CGAffineTransform(scaleX: 1, y: 1)
         self.backgroundView.center = center
-        self.alpha = 1.0
+        self.alpha = self.backgroundAlpha
       }, completion: { _ in
         self.startAnimations()
       })
     } else {
-      self.alpha = 1.0
+      self.alpha = self.backgroundAlpha
     }
     // Handler user's action after showing.
     if let handler = handler {
@@ -216,7 +235,7 @@ extension MaterialShowcase {
   func setDefaultProperties() {
     // Background
     backgroundPromptColor = BACKGROUND_DEFAULT_COLOR
-    backgroundPromptColorAlpha = BACKGROUND_ALPHA
+    backgroundPromptColorAlpha = BACKGROUND_PROMPT_ALPHA
     // Target view
     targetTintColor = BACKGROUND_DEFAULT_COLOR
     targetHolderColor = TARGET_HOLDER_COLOR
@@ -504,6 +523,9 @@ extension MaterialShowcase {
       delegate?.showCaseDidDismiss?(showcase: self, didTapTarget: didTapTarget)
     }
 
+    if didTapTarget {
+      onTapThrough?()
+    }
   }
   
   private func recycleSubviews() {
