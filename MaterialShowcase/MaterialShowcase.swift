@@ -300,7 +300,8 @@ extension MaterialShowcase {
       hiddenTargetHolderView.isUserInteractionEnabled = true
     } else {
       // Add gesture recognizer for both container and its subview
-      addGestureRecognizer(tapGestureRecoganizer())
+      isUserInteractionEnabled = false
+      targetView.addGestureRecognizer(tapGestureRecoganizer())
       hiddenTargetHolderView.addGestureRecognizer(tapGestureRecoganizer())
       hiddenTargetHolderView.isUserInteractionEnabled = true
     }
@@ -489,7 +490,7 @@ extension MaterialShowcase {
   }
   
   @objc private func tapGestureSelector(tapGesture:UITapGestureRecognizer) {
-    completeShowcase(didTapTarget: tapGesture.view === hiddenTargetHolderView)
+    completeShowcase(didTapTarget: tapGesture.view === hiddenTargetHolderView || !isUserInteractionEnabled)
   }
   
   /// Default action when dimissing showcase
