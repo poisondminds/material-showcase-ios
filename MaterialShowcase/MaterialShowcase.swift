@@ -12,8 +12,7 @@ import UIKit
   @objc optional func showCaseDidDismiss(showcase: MaterialShowcase, didTapTarget:Bool)
 }
 
-public class MaterialShowcase: UIView {
-  
+open class MaterialShowcase: UIView {
   
   @objc public enum BackgroundTypeStyle: Int {
     case circle //default
@@ -52,7 +51,7 @@ public class MaterialShowcase: UIView {
   var targetRippleView: UIView!
   var targetCopyView: UIView!
   var instructionView: MaterialShowcaseInstructionView!
-    
+  
   var onTapThrough: (() -> Void)?
   
   // MARK: Public Properties
@@ -62,6 +61,7 @@ public class MaterialShowcase: UIView {
   @objc public var backgroundPromptColor: UIColor!
   @objc public var backgroundPromptColorAlpha: CGFloat = 0.0
   @objc public var backgroundViewType: BackgroundTypeStyle = .circle
+  @objc public var backgroundRadius: CGFloat = -1.0 // If the value is negative, calculate the radius automatically
   // Tap zone settings
   // - false: recognize tap from all displayed showcase.
   // - true: recognize tap for targetView area only.
@@ -90,8 +90,6 @@ public class MaterialShowcase: UIView {
   @objc public var aniRippleAlpha: CGFloat = 0.0
   // Delegate
   @objc public weak var delegate: MaterialShowcaseDelegate?
-  
-
   
   public init() {
     // Create frame
@@ -176,13 +174,13 @@ extension MaterialShowcase {
     initViews()
     alpha = 0.0
     containerView.addSubview(self)
-    self.layoutIfNeeded()
+    layoutIfNeeded()
     
     let scale = TARGET_HOLDER_RADIUS / (backgroundView.frame.width / 2)
     let center = backgroundView.center
     
     backgroundView.transform = CGAffineTransform(scaleX: scale, y: scale) // Initial set to support animation
-    self.backgroundView.center = self.targetHolderView.center
+    backgroundView.center = targetHolderView.center
     if animated {
       UIView.animate(withDuration: aniComeInDuration, animations: {
         self.targetHolderView.transform = CGAffineTransform(scaleX: 1, y: 1)
@@ -193,16 +191,12 @@ extension MaterialShowcase {
         self.startAnimations()
       })
     } else {
-      self.alpha = self.backgroundAlpha
+      alpha = backgroundAlpha
     }
     // Handler user's action after showing.
-    if let handler = handler {
-      handler()
-    }
+    handler?()
   }
-
- 
-
+  
 }
 
 // MARK: - Utility API
@@ -306,7 +300,8 @@ extension MaterialShowcase {
       hiddenTargetHolderView.isUserInteractionEnabled = true
     } else {
       // Add gesture recognizer for both container and its subview
-      addGestureRecognizer(tapGestureRecoganizer())
+      isUserInteractionEnabled = false
+      targetView.addGestureRecognizer(tapGestureRecoganizer())
       hiddenTargetHolderView.addGestureRecognizer(tapGestureRecoganizer())
       hiddenTargetHolderView.isUserInteractionEnabled = true
     }
@@ -316,15 +311,15 @@ extension MaterialShowcase {
   private func addBackground() {
     switch self.backgroundViewType {
     case .circle:
-      let radius: CGFloat!
+      let radius: CGFloat
       
-      let center = targetRippleView.center//getOuterCircleCenterPoint(for: targetCopyView)
-      
-      if UIDevice.current.userInterfaceIdiom == .pad {
-        radius = 300.0
+      if backgroundRadius < 0 {
+        radius = getDefaultBackgroundRadius()
       } else {
-        radius = getOuterCircleRadius(center: center, textBounds: instructionView.frame, targetBounds: targetRippleView.frame)
+        radius = backgroundRadius
       }
+      
+      let center = targetRippleView.center
       
       backgroundView = UIView(frame: CGRect(x: 0, y: 0, width: radius * 2,height: radius * 2))
       backgroundView.center = center
@@ -336,6 +331,16 @@ extension MaterialShowcase {
     backgroundView.backgroundColor = backgroundPromptColor.withAlphaComponent(backgroundPromptColorAlpha)
     insertSubview(backgroundView, belowSubview: targetRippleView)
     addBackgroundMask(with: targetHolderRadius, in: backgroundView)
+  }
+  
+  private func getDefaultBackgroundRadius() -> CGFloat{
+    var radius: CGFloat = 0.0
+    if UIDevice.current.userInterfaceIdiom == .pad {
+      radius = 300.0
+    } else {
+      radius = getOuterCircleRadius(center: center, textBounds: instructionView.frame, targetBounds: targetRippleView.frame)
+    }
+    return radius
   }
   
   private func addBackgroundMask(with radius: CGFloat, in view: UIView) {
@@ -457,9 +462,7 @@ extension MaterialShowcase {
       }
     } else {
       if getTargetPosition(target: targetView, container: containerView) == .above {
-        
-        yPosition = center.y + TARGET_PADDING +  (targetView.bounds.height / 2 > self.targetHolderRadius ? targetView.bounds.height / 2 : self.targetHolderRadius)
-        
+        yPosition = center.y + TARGET_PADDING +  (targetView.bounds.height / 2 > targetHolderRadius ? targetView.bounds.height / 2 : targetHolderRadius)
       } else {
         yPosition = center.y - TEXT_CENTER_OFFSET - LABEL_DEFAULT_HEIGHT * 2
       }
@@ -487,7 +490,7 @@ extension MaterialShowcase {
   }
   
   @objc private func tapGestureSelector(tapGesture:UITapGestureRecognizer) {
-    completeShowcase(didTapTarget: tapGesture.view === hiddenTargetHolderView)
+    completeShowcase(didTapTarget: tapGesture.view === hiddenTargetHolderView || !isUserInteractionEnabled)
   }
   
   /// Default action when dimissing showcase
@@ -522,7 +525,7 @@ extension MaterialShowcase {
     if delegate != nil && delegate?.showCaseDidDismiss != nil {
       delegate?.showCaseDidDismiss?(showcase: self, didTapTarget: didTapTarget)
     }
-
+    
     if didTapTarget {
       onTapThrough?()
     }

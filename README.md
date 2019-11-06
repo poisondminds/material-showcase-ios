@@ -32,7 +32,7 @@ $ brew install carthage
 
 To integrate MaterialShowcase into your Xcode project using Carthage, specify it in your `Cartfile`:
 ```ogdl
-github "aromajoin/material-showcase-ios" ~> 0.6.6
+github "aromajoin/material-showcase-ios" ~> 0.7.1
 ```
 
 Run `carthage update` to build the framework and drag the built `MaterialShowcase.framework` into your Xcode project.
@@ -126,6 +126,7 @@ You can define your own styles based on your app.
   showcase.backgroundPromptColor = UIColor.blue
   showcase.backgroundPromptColorAlpha = 0.96
   showcase.backgroundViewType = .full // default is .circle
+  showcase.backgroundRadius = 300
   // Target
   showcase.targetTintColor = UIColor.blue
   showcase.targetHolderRadius = 44
